@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+<head>
+    <meta charset="utf-8">
+    <title>Peter's MTA Woes</title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script type="text/javascript" src="./dist/js/percircle.js"></script>
+    
+    <link rel="stylesheet" href="./dist/css/percircle.css">
+	<style>
+	body {
+		background-color: #f5f5f5;
+		margin: 0;
+		padding: 0;
+		font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+	}
+	.page {
+		margin: 40px;
+	}
+	h1 {
+		margin: 40px 0 60px 0;
+	}
+	.clearfix:before, .clearfix:after { content: " "; display: table; }
+	.clearfix:after { clear: both; }
+	.clearfix { *zoom: 1; }
+	.dark-area {
+		background-color: #555;
+		padding: 40px;
+		margin: 0 -40px 20px -40px;
+	}
+	</style>
+	
+</head>
+
+<body>
+    <div class="page">
+        <h1>Peter's MTA Woes</h1>
+        
+        <h2>Problems Now?</h2>
+        <div class="clearfix">
+            <div id="n_concern_circle" data-text="N" class="yellow">
+            </div>
+            <div id="q_concern_circle" data-text="Q" class="yellow">
+            </div>
+            <div id="r_concern_circle" data-text="R" class="yellow">
+            </div>
+            <div id="d_concern_circle" data-text="D" class="orange">
+            </div>
+        </div>
+        <h2>Delays Lately?</h2>
+        <div class="clearfix">
+            <div id="n_delay_circle" data-text="N" class="yellow">
+            </div>
+            <div id="q_delay_circle" data-text="Q" class="yellow">
+            </div>
+            <div id="r_delay_circle" data-text="R" class="yellow">
+            </div>
+            <div id="d_delay_circle" data-text="D" class="orange">
+            </div>
+        </div>
+        <h2>What's going on here?</h2>
+        <div> <p>Both of these metrics use twitter data to assess the reilability of the MTA </p>
+                <p> Problems Now?: is a measure of how many tweets there are about a specific line in the last hour. </p>
+                <p>Delays?: is a measure of how many recent tweets mention delays. </p>
+            </div>
+    </div>
+    
+    <script type="text/javascript">
+        $(function(){ 
+            $("[id$='circle']").percircle({percent:1});
+        });
+
+        $(document).ready(function(){
+            fetch_for_train("N", [
+                generate_concern_meter_callback($("#n_concern_circle")),
+                generate_delay_callback($("#n_delay_circle"))]);
+            fetch_for_train("Q", [
+                generate_concern_meter_callback($("#q_concern_circle")),
+                generate_delay_callback($("#q_delay_circle"))]);
+            fetch_for_train("R", [
+                generate_concern_meter_callback($("#r_concern_circle")),
+                generate_delay_callback($("#r_delay_circle"))]);
+            fetch_for_train("D", [
+                generate_concern_meter_callback($("#d_concern_circle")),
+                generate_delay_callback($("#d_delay_circle"))]);
+        });
+
+    ddata = []
+
+    function fetch_for_train(train_name, callbacks){
+        $.ajax({
+                type:"POST",
+                url: 'https://xgihwa5ec7.execute-api.us-east-2.amazonaws.com/test/mtaTwitter',
+                crossDomain: true,
+                contentType: "application/json",
+                dataType: "json",
+                data: '{"search_term":"'+train_name+'"}',
+                success: function(a,b,c){callbacks.forEach(
+                    function(callback){callback(a)})}
+            });
+    }
+
+    function generate_concern_meter_callback(meter){
+        return function(data){
+            num_tweets_in_last_hour = data.filter(
+                x => new Date - new Date(x['created_at']) < 60 * 60 * 1000).length
+            percent_to_set = num_tweets_in_last_hour*10
+            meter.percircle({percent:percent_to_set}) 
+        }
+    }
+
+    function generate_delay_callback(meter){
+        return function(data){
+            num_tweets_mentioning_delays = data.filter(
+                x => x['text'].toLowerCase().includes("delay")).length
+            percent_to_set = num_tweets_mentioning_delays*10
+            meter.percircle({percent:percent_to_set}) 
+        }
+    }
+    </script>
+</body>
+</html>
